@@ -8,6 +8,12 @@ import * as React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
+import Booking from "./Screens/Booking";
+import EditProfile from "./Screens/EditProfile";
+import About from "./Screens/About";
+import PlayerBooking from "./Screens/PlayerBooking";
+import PlayerWish from "./Screens/PlayerWish";
+
 
 import {
   SafeAreaProvider,
@@ -65,6 +71,14 @@ const Router = () => {
           <Stack.Screen name="SignUp" component={SignUp} />
           <Stack.Screen name="Welcometwo" component={Welcometwo} />
           <Stack.Screen name="PlayerHome" component={PlayerHome} />
+          <Stack.Screen name="Booking" component={Booking} />
+          <Stack.Screen name="EditProfile" component={EditProfile} />
+          <Stack.Screen name="About" component={About} />
+          <Stack.Screen name="PlayerBooking" component={PlayerBooking} />
+          <Stack.Screen name="PlayerWish" component={PlayerWish} />
+
+
+          
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

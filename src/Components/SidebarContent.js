@@ -89,6 +89,35 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                 <Image source={Images.edit} style={{ height: 24, width: 24 }} />
                 <Text style={styles.text}>Edit Profile</Text>
               </TouchableOpacity>
+             
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                }}
+                onPress={() => navigation.navigate("PlayerBooking")}
+              >
+                <Image
+                  source={Images.booking}
+                  style={{ height: 25, width: 25 }}
+                />
+                <Text style={styles.text}>Bookings</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                }}
+                onPress={() => navigation.navigate("PlayerWish")}
+              >
+                <Image
+                  source={Images.heart}
+                  style={{ height: 25, width: 25 }}
+                />
+                <Text style={styles.text}>Wishlist</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   flexDirection: "row",
