@@ -10,13 +10,67 @@ import {
 import { Images } from "../Constants/Images";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { useNavigation } from "@react-navigation/native";
+import { FIREBASE_AUTH, FIRESTORE_DB } from "../../FirebaseConfig";
+import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import Loader from "./Loader";
 
 const SidebarContent = ({ show, close, staff, admin }) => {
   const navigation = useNavigation();
   const [imageUrl, setImageUrl] = useState(null);
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const auth = FIREBASE_AUTH;
 
   const handleLogout = async () => {
-    console.warn("Logout");
+    setLoading(true);
+    try {
+      await signOut(auth);
+      Alert.alert("Logout", "You have been logged out.");
+      navigation.navigate("Login");
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Logout failed", error.message);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error("User not logged in.");
+        }
+
+        const userDoc = await getDoc(
+          doc(FIRESTORE_DB, "users", currentUser.uid)
+        );
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist.");
+        }
+
+        const userData = userDoc.data();
+        setName(truncateName(userData.username || ""));
+        setImageUrl(userData.image || null);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Failed to fetch user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const truncateName = (name) => {
+    if (name.length > 14) {
+      return name.substring(0, 14) + " ....";
+    }
+    return name;
   };
 
   return (
@@ -57,7 +111,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                       color: WHITE,
                     }}
                   >
-                    Ali
+                    {name || "Player"}
                   </Text>
                 </View>
               </View>
@@ -89,7 +143,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                 <Image source={Images.edit} style={{ height: 24, width: 24 }} />
                 <Text style={styles.text}>Edit Profile</Text>
               </TouchableOpacity>
-             
+
               <TouchableOpacity
                 style={{
                   flexDirection: "row",
@@ -158,7 +212,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
               </TouchableOpacity>
             </View>
           </View>
-          {/* <Loader loading={loading} /> */}
+          <Loader loading={loading} />
         </ScrollView>
       ) : null}
 
@@ -168,7 +222,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
             <View
               style={{
                 height: 55,
-                backgroundColor: "#2FCD74",
+                backgroundColor: GRADIENT_1,
                 alignItems: "center",
                 justifyContent: "center",
                 paddingHorizontal: 18,
@@ -177,10 +231,10 @@ const SidebarContent = ({ show, close, staff, admin }) => {
               }}
             >
               <View style={{ flexDirection: "row", gap: 12 }}>
-                {/* <Image
-                  source={imageUrl ? { uri: imageUrl } : Images.smallpic}
+                <Image
+                  source={imageUrl ? { uri: imageUrl } : Images.smalluser}
                   style={{ width: 40, height: 40, borderRadius: 20 }}
-                /> */}
+                />
                 <View style={{ justifyContent: "center" }}>
                   <Text
                     style={{
@@ -189,7 +243,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                       color: WHITE,
                     }}
                   >
-                    Staff Member
+                    Vendor
                   </Text>
                   <Text
                     style={{
@@ -198,7 +252,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                       color: WHITE,
                     }}
                   >
-                    ali
+                    {name || "Vendor"}
                   </Text>
                 </View>
               </View>
@@ -230,40 +284,26 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                 <Image source={Images.edit} style={{ height: 24, width: 24 }} />
                 <Text style={styles.text}>Edit Profile</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 14,
                 }}
-                onPress={() => {
-                  navigation.navigate("EditProfile");
-                }}
-              >
-                <Image source={Images.bin} style={{ height: 24, width: 24 }} />
-                <Text style={styles.text}>Bin Details</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                }}
-                onPress={() => {
-                  navigation.navigate("EditProfile");
-                }}
+                onPress={() => navigation.navigate("VerifyBooking")}
               >
                 <Image
-                  source={Images.route}
-                  style={{ height: 24, width: 24 }}
+                  source={Images.booking}
+                  style={{ height: 25, width: 25 }}
                 />
-                <Text style={styles.text}>Route Recomendation</Text>
+                <Text style={styles.text}>Approve Bookings</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   flexDirection: "row",
-                  gap: 14,
                   alignItems: "center",
+                  gap: 14,
                 }}
                 onPress={() => navigation.navigate("About")}
               >
@@ -299,7 +339,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
               </TouchableOpacity>
             </View>
           </View>
-          {/* <Loader loading={loading} /> */}
+          <Loader loading={loading} />
         </ScrollView>
       ) : null}
 
@@ -309,7 +349,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
             <View
               style={{
                 height: 55,
-                backgroundColor: "#2FCD74",
+                backgroundColor: GRADIENT_1,
                 alignItems: "center",
                 justifyContent: "center",
                 paddingHorizontal: 18,
@@ -318,10 +358,10 @@ const SidebarContent = ({ show, close, staff, admin }) => {
               }}
             >
               <View style={{ flexDirection: "row", gap: 12 }}>
-                {/* <Image
-                  source={imageUrl ? { uri: imageUrl } : Images.smallpic}
+                <Image
+                  source={imageUrl ? { uri: imageUrl } : Images.smalluser}
                   style={{ width: 40, height: 40, borderRadius: 20 }}
-                /> */}
+                />
                 <View style={{ justifyContent: "center" }}>
                   <Text
                     style={{
@@ -339,7 +379,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                       color: WHITE,
                     }}
                   >
-                    Abc
+                    {name || "Admin"}
                   </Text>
                 </View>
               </View>
@@ -363,6 +403,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 14,
+                  marginLeft: 2,
                 }}
                 onPress={() => {
                   navigation.navigate("EditProfile");
@@ -371,27 +412,15 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                 <Image source={Images.edit} style={{ height: 24, width: 24 }} />
                 <Text style={styles.text}>Edit Profile</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 14,
+                  gap: 12,
                 }}
                 onPress={() => {
-                  navigation.navigate("BinDetail");
-                }}
-              >
-                <Image source={Images.bin} style={{ height: 24, width: 24 }} />
-                <Text style={styles.text}>Bin Details</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                }}
-                onPress={() => {
-                  navigation.navigate("CitizenComplains");
+                  navigation.navigate("PlayerComplains");
                 }}
               >
                 <Image
@@ -404,7 +433,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 14,
+                  gap: 12,
                 }}
                 onPress={() => navigation.navigate("ProfileManagement")}
               >
@@ -419,6 +448,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                   flexDirection: "row",
                   gap: 14,
                   alignItems: "center",
+                  marginLeft: 2,
                 }}
                 onPress={() => navigation.navigate("About")}
               >
@@ -454,7 +484,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
               </TouchableOpacity>
             </View>
           </View>
-          {/* <Loader loading={loading} /> */}
+          <Loader loading={loading} />
         </ScrollView>
       ) : null}
     </>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,82 +6,86 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { Images } from "../Constants/Images";
 import Sidebar from "../Components/Sidebar";
-import { Rating } from "react-native-ratings"; // Import from react-native-ratings
+import { Rating } from "react-native-ratings";
+import { FIRESTORE_DB } from "../../FirebaseConfig";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 
 const PlayerHome = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
+  const [approvedGigs, setApprovedGigs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [averageRating, setAverageRating] = useState();
+  const [gigid, setGigId] = useState("");
 
   const gameImages = [
     { name: "Hockey", image: Images.hockey },
     { name: "Cricket", image: Images.cricket },
     { name: "Football", image: Images.football },
     { name: "Snooker", image: Images.snooker },
+    { name: "Basketball", image: Images.snooker },
   ];
 
-  const gamesData = {
-    Cricket: [
-      {
-        title: "Punjab Cricket Club",
-        image: Images.indoor,
-        rating: 4.5,
-        location: "New York, USA",
-      },
-      {
-        title: "Card 2",
-        image: Images.indoor,
-        rating: 4.0,
-        location: "London, UK",
-      },
-    ],
-    Hockey: [
-      {
-        title: "Team 1",
-        image: Images.hockey,
-        rating: 4.5,
-        location: "Location 1",
-      },
-      {
-        title: "Team 2",
-        image: Images.hockey,
-        rating: 4.0,
-        location: "Location 2",
-      },
-    ],
-    Football: [
-      {
-        title: "Team A",
-        image: Images.football,
-        rating: 3.5,
-        location: "City A",
-      },
-      {
-        title: "Team B",
-        image: Images.football,
-        rating: 5.0,
-        location: "City B",
-      },
-    ],
-    Snooker: [
-      {
-        title: "Club 1",
-        image: Images.snooker,
-        rating: 4.2,
-        location: "Location X",
-      },
-      {
-        title: "Club 2",
-        image: Images.snooker,
-        rating: 3.8,
-        location: "Location Y",
-      },
-    ],
+  const fetchAverageRating = async () => {
+    try {
+      setLoading(true);
+
+      const q = query(
+        collection(FIRESTORE_DB, "reviews"),
+        where("gigId", "==", gigId)
+      );
+      const querySnapshot = await getDocs(q);
+      let totalRating = 0;
+      let numberOfReviews = 0;
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        totalRating += data.rating;
+        numberOfReviews++;
+      });
+
+      const averageRating =
+        numberOfReviews > 0 ? totalRating / numberOfReviews : 0;
+      const normalizedRating = averageRating / 5; // Normalizing the rating out of 5
+
+      setAverageRating(normalizedRating);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(FIRESTORE_DB, "gigs"),
+      (snapshot) => {
+        const gigs = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        const approved = gigs.filter((gig) => gig.status === "Active");
+
+        setApprovedGigs(approved);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching approved gigs: ", error);
+        Alert.alert("Error", "Failed to fetch approved gigs.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const handleGamePress = (game) => {
     setSelectedGame((prevSelectedGame) =>
@@ -91,32 +95,40 @@ const PlayerHome = () => {
 
   const renderSelectedGameCards = () => {
     if (!selectedGame) return null;
+    const filteredGigs = approvedGigs.filter(
+      (gig) => gig.category === selectedGame
+    );
+
+    if (filteredGigs.length === 0) {
+      return (
+        <Text style={styles.noGigsText}>
+          No approved gigs for {selectedGame}.
+        </Text>
+      );
+    }
+
     return (
       <View style={styles.cardsContainer}>
         <View style={styles.gameTitleContainer}>
-          <Text
-            style={{
-              color: WHITE,
-              fontFamily: "Montserrat 700",
-              marginBottom: 15,
-              fontSize: 18,
-            }}
-          >
-            {selectedGame}
-          </Text>
+          <Text style={styles.gameTitle}>{selectedGame}</Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.slider}
         >
-          {gamesData[selectedGame].map((card, index) => (
+          {filteredGigs.map((gig) => (
             <Card
-              key={index}
-              title={card.title}
-              image={card.image}
-              rating={card.rating}
-              location={card.location}
+              key={gig.id}
+              title={gig.title}
+              image={{ uri: gig.imageUrl }}
+              rating={gig.rating || 0}
+              location={gig.location}
+              bankName={gig.bankName}
+              hourlyRate={gig.hourlyRate}
+              accountNumber={gig.accountNumber}
+              email={gig.email}
+              gigId={gig.gigId}
             />
           ))}
         </ScrollView>
@@ -125,37 +137,40 @@ const PlayerHome = () => {
   };
 
   const renderAllGames = () =>
-    Object.keys(gamesData).map((game) => (
-      <View key={game} style={styles.cardsContainer}>
-        <View style={styles.gameTitleContainer}>
-          <Text
-            style={{
-              color: WHITE,
-              fontFamily: "Montserrat 700",
-              marginBottom: 15,
-              fontSize: 18,
-            }}
+    gameImages.map((game) => {
+      const filteredGigs = approvedGigs.filter(
+        (gig) => gig.category === game.name
+      );
+      if (filteredGigs.length === 0) return null;
+
+      return (
+        <View key={game.name} style={styles.cardsContainer}>
+          <View style={styles.gameTitleContainer}>
+            <Text style={styles.gameTitle}>{game.name}</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.slider}
           >
-            {game}
-          </Text>
+            {filteredGigs.map((gig) => (
+              <Card
+                key={gig.id}
+                title={gig.title}
+                image={{ uri: gig.imageUrl }}
+                rating={gig.rating || 0}
+                location={gig.location}
+                bankName={gig.bankName}
+                hourlyRate={gig.hourlyRate}
+                accountNumber={gig.accountNumber}
+                email={gig.email}
+                gigId={gig.gigId}
+              />
+            ))}
+          </ScrollView>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.slider}
-        >
-          {gamesData[game].map((card, index) => (
-            <Card
-              key={index}
-              title={card.title}
-              image={card.image}
-              rating={card.rating}
-              location={card.location}
-            />
-          ))}
-        </ScrollView>
-      </View>
-    ));
+      );
+    });
 
   return (
     <>
@@ -174,6 +189,9 @@ const PlayerHome = () => {
         </View>
 
         <Text style={styles.sectionTitle}>All Games</Text>
+        <TouchableOpacity onPress={fetchAverageRating}>
+          <Text>test</Text>
+        </TouchableOpacity>
         <View style={styles.sliderContainer}>
           <ScrollView
             horizontal
@@ -195,25 +213,58 @@ const PlayerHome = () => {
                     },
                   ]}
                 />
-                <Text style={styles.text2}>{game.name}</Text>
+                <Text
+                  style={{
+                    fontFamily: "Montserrat 600",
+                    marginLeft: 10,
+                    color: GRADIENT_1,
+                  }}
+                >
+                  {game.name}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {selectedGame ? renderSelectedGameCards() : renderAllGames()}
+        {loading ? (
+          <ActivityIndicator size="large" color={GRADIENT_1} />
+        ) : selectedGame ? (
+          renderSelectedGameCards()
+        ) : (
+          renderAllGames()
+        )}
       </ScrollView>
     </>
   );
 };
 
-const Card = ({ title, image, rating, location }) => {
+const Card = ({
+  title,
+  image,
+  rating,
+  location,
+  hourlyRate,
+  bankName,
+  accountNumber,
+  email,
+  gigId,
+}) => {
   const navigation = useNavigation();
 
   return (
     <TouchableOpacity
       onPress={() =>
-        navigation.navigate("Booking", { title, location, rating })
+        navigation.navigate("Booking", {
+          title,
+          location,
+          rating,
+          hourlyRate,
+          bankName,
+          accountNumber,
+          email,
+          gigId,
+        })
       }
     >
       <View style={styles.card}>
@@ -246,16 +297,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 10,
   },
-  text: {
-    fontSize: 20,
-    color: GRADIENT_1,
-  },
-  text2: {
-    fontSize: 13,
-    color: GRADIENT_1,
-    fontFamily: "Montserrat 600",
-    textAlign: "center",
-  },
   userIcon: {
     height: 32,
     width: 32,
@@ -282,6 +323,7 @@ const styles = StyleSheet.create({
   image: {
     borderRadius: 50,
     marginRight: 10,
+    marginLeft: 10,
   },
   cardsContainer: {
     height: 270,
@@ -290,6 +332,14 @@ const styles = StyleSheet.create({
     backgroundColor: GRADIENT_1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  gameTitleContainer: {
+    marginBottom: 15,
+  },
+  gameTitle: {
+    color: WHITE,
+    fontFamily: "Montserrat 700",
+    fontSize: 18,
   },
   card: {
     backgroundColor: "#FFF",
@@ -325,6 +375,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: GRADIENT_1,
     fontFamily: "Montserrat 500",
+  },
+  noGigsText: {
+    fontSize: 16,
+    color: GRADIENT_1,
+    fontFamily: "Montserrat 600",
+    textAlign: "center",
+    marginTop: 20,
   },
 });
 

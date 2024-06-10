@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,19 +6,74 @@ import {
   TextInput,
   Image,
   TouchableOpacity,
+  Alert,
 } from "react-native";
-import { useState } from "react";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { Images } from "../Constants/Images";
 import { useNavigation } from "@react-navigation/native";
+import { signInWithEmailAndPassword } from "firebase/auth"; // Import the necessary Firebase authentication method
+import { FIREBASE_AUTH, FIRESTORE_DB } from "../../FirebaseConfig"; // Assuming you have Firebase configuration imported
+import { doc, getDoc } from "firebase/firestore";
+import Loader from "../Components/Loader";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+
+  const signIn = async () => {
+    setLoading(true);
+    try {
+      const response = await signInWithEmailAndPassword(
+        FIREBASE_AUTH,
+        email,
+        password
+      );
+      const user = response.user;
+
+      // Check if the user's email is verified
+      if (!user.emailVerified) {
+        setLoading(false);
+        Alert.alert(
+          "Email not verified",
+          "Please verify your email before signing in."
+        );
+        return;
+      }
+
+      // Retrieve user data from Firestore
+      const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
+      const userData = userDoc.data();
+
+      // Navigate based on user role
+      if (userData && userData.selectedRole) {
+        switch (userData.selectedRole) {
+          case "admin":
+            navigation.navigate("AdminHome");
+            break;
+          case "vendor":
+            navigation.navigate("VendorHome");
+            break;
+          case "player":
+            navigation.navigate("PlayerHome");
+            break;
+          default:
+            break;
+        }
+      }
+    } catch (error) {
+      console.log("Login failed:", error.message);
+      Alert.alert("Sign In failed", error.message);
+      // Handle login error, e.g., display an error message
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
+      <Loader loading={loading} />
       <View style={{ marginBottom: 50 }}>
         <Text style={styles.text}>Welcome</Text>
         <Text style={styles.text}>Back!</Text>
@@ -80,7 +135,7 @@ const Login = () => {
       </TouchableOpacity>
       <TouchableOpacity
         activeOpacity={0.5}
-        onPress={() => navigation.navigate("PlayerHome")}
+        onPress={signIn}
         style={{
           backgroundColor: GRADIENT_1,
           height: 55,

@@ -6,17 +6,45 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { Images } from "../Constants/Images";
 import { useNavigation } from "@react-navigation/native";
+import Loader from "../Components/Loader";
+import { FIREBASE_AUTH } from "../../FirebaseConfig";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 const Forget = () => {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+  const auth = FIREBASE_AUTH;
+
+  const handleForgotPassword = async () => {
+    setLoading(true);
+    if (email) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+
+        Alert.alert(
+          "Check your email",
+          "If you entered a correct email \n A link to reset your password has been sent to your email address."
+        );
+        navigation.navigate("Login");
+      } catch (error) {
+        console.log(error);
+        Alert.alert("Reset failed", error.message);
+      }
+    } else {
+      Alert.alert("Input required", "Please enter your email address.");
+    }
+    setLoading(false);
+  };
 
   return (
     <View style={styles.container}>
+      <Loader loading={loading} />
       <View style={{ marginBottom: 50 }}>
         <Text style={styles.text}>Forgot </Text>
         <Text style={styles.text}>password? </Text>
@@ -53,8 +81,12 @@ const Forget = () => {
         <Text style={styles.redAsterisk}>*</Text> We will send you a message to
         set or reset your new password
       </Text>
-      <TouchableOpacity activeOpacity={0.5} style={styles.button}>
-        <Text style={styles.buttonText}>Create Account</Text>
+      <TouchableOpacity
+        activeOpacity={0.5}
+        style={styles.button}
+        onPress={handleForgotPassword}
+      >
+        <Text style={styles.buttonText}>Submit</Text>
       </TouchableOpacity>
     </View>
   );

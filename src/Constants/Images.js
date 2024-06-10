@@ -23,6 +23,10 @@ import back2 from "../Assests/back2.png";
 import forward from "../Assests/forward.png";
 import post from "../Assests/post.png";
 import flag from "../Assests/flag.png";
+import biguser from "../Assests/biguser.png";
+import circle from "../Assests/circle.png";
+import complain from "../Assests/complain.png";
+import management from "../Assests/management.png";
 
 const Images = {
   wel1: wel1,
@@ -50,6 +54,10 @@ const Images = {
   forward: forward,
   post: post,
   flag: flag,
+  biguser: biguser,
+  circle: circle,
+  complain: complain,
+  management: management,
 };
 
 export { Images };

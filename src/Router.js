@@ -13,7 +13,12 @@ import EditProfile from "./Screens/EditProfile";
 import About from "./Screens/About";
 import PlayerBooking from "./Screens/PlayerBooking";
 import PlayerWish from "./Screens/PlayerWish";
-
+import VendorHome from "./Screens/VendorHome";
+import NewGig from "./Screens/NewGig";
+import AdminHome from "./Screens/AdminHome";
+import ProfileManagement from "./Screens/ProfileManagement";
+// import PlayerComlains from "./Screens/PlayerComplains";
+import VerifyBooking from "./Screens/VerifyBooking";
 
 import {
   SafeAreaProvider,
@@ -76,9 +81,15 @@ const Router = () => {
           <Stack.Screen name="About" component={About} />
           <Stack.Screen name="PlayerBooking" component={PlayerBooking} />
           <Stack.Screen name="PlayerWish" component={PlayerWish} />
-
-
-          
+          <Stack.Screen name="VendorHome" component={VendorHome} />
+          <Stack.Screen name="NewGig" component={NewGig} />
+          <Stack.Screen name="AdminHome" component={AdminHome} />
+          <Stack.Screen
+            name="ProfileManagement"
+            component={ProfileManagement}
+          />
+          {/* <Stack.Screen name="PlayerComlains" component={PlayerComlains} /> */}
+          <Stack.Screen name="VerifyBooking" component={VerifyBooking} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

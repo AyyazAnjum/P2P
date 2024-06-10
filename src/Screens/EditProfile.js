@@ -13,9 +13,12 @@ import { Images } from "../Constants/Images";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-
-
-
+import * as mime from "mime";
+import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Loader from "../Components/Loader";
+import { GRADIENT_1 } from "../Constants/Colors";
 
 const EditProfile = () => {
   const [name, setName] = useState("");
@@ -28,7 +31,7 @@ const EditProfile = () => {
   const [errors, setErrors] = useState({});
 
   const navigate = useNavigation();
-
+  const auth = FIREBASE_AUTH;
 
   useEffect(() => {
     (async () => {
@@ -44,7 +47,40 @@ const EditProfile = () => {
     })();
   }, []);
 
-  
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error("User not logged in.");
+        }
+
+        const userDoc = await getDoc(
+          doc(FIRESTORE_DB, "users", currentUser.uid)
+        );
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist.");
+        }
+
+        const userData = userDoc.data();
+        setName(userData.username || "");
+        setEmail(userData.email || "");
+        setPhone(userData.phone || "");
+        setAddress(userData.address || "");
+        setGender(userData.gender || "");
+        setImage(userData.image || null);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Failed to fetch user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const pickImage = async () => {
     try {
       const { status } =
@@ -77,17 +113,92 @@ const EditProfile = () => {
     }
   };
 
-  
+  const uriToBlob = async (uri) => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return blob;
+  };
+
+  const validateInputs = () => {
+    const errors = {};
+    if (!name) {
+      errors.name = "Name is required";
+    }
+    if (!email) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = "Email address is invalid";
+    }
+    if (!phone) {
+      errors.phone = "Phone number is required";
+    } else if (!/^\+\d{11,13}$/.test(phone)) {
+      errors.phone = "Phone number is invalid";
+    }
+    if (!address) {
+      errors.address = "Address is required";
+    } else if (!/\w+\s+\d+/.test(address)) {
+      errors.address =
+        "Address should contain alphanumeric characters and house number";
+    }
+    if (!gender) {
+      errors.gender = "Gender is required";
+    } else if (!["Male", "Female"].includes(gender)) {
+      errors.gender = "Gender should be Male or Female";
+    }
+    return errors;
+  };
 
   const handleSave = async () => {
-    
+    const validationErrors = validateInputs();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setLoading(true);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error("User not logged in.");
+      }
+
+      await updateDoc(doc(FIRESTORE_DB, "users", currentUser.uid), {
+        username: name,
+        email: email,
+        phone: phone,
+        address: address,
+        gender: gender,
+      });
+
+      if (image) {
+        const blob = await uriToBlob(image);
+        const storage = getStorage();
+        const storageRef = ref(storage, `profileImages/${currentUser.uid}`);
+        await uploadBytes(storageRef, blob);
+
+        const imageUrl = await getDownloadURL(storageRef);
+
+        await updateDoc(doc(FIRESTORE_DB, "users", currentUser.uid), {
+          image: imageUrl,
+        });
+
+        setImage(imageUrl);
+      }
+
+      console.log("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      Alert.alert("Error", "Failed to update profile.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
+      <Loader loading={loading} />
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <TouchableOpacity onPress={() => navigate.goBack()}>
-          <Image source={Images.blackback} />
+          <Image source={Images.back} style={{ height: 30, width: 30 }} />
         </TouchableOpacity>
 
         <Text style={styles.headerText}>Edit Profile</Text>
@@ -108,7 +219,7 @@ const EditProfile = () => {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
-            <Image source={Images.profile} style={styles.image} />
+            <Image source={Images.biguser} style={styles.image} />
             <Image
               source={Images.circle}
               style={{ position: "absolute", right: 0, bottom: 10 }}
@@ -187,7 +298,6 @@ const EditProfile = () => {
           <Text style={styles.submitButtonText}>Submit</Text>
         </View>
       </TouchableOpacity>
-
     </ScrollView>
   );
 };
@@ -203,6 +313,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     alignSelf: "center",
     marginLeft: "24%",
+    color: GRADIENT_1,
   },
   imageContainer: {
     width: 150,
