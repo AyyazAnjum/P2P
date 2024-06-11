@@ -14,13 +14,21 @@ import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { Images } from "../Constants/Images";
 import Sidebar from "../Components/Sidebar";
 import { Rating } from "react-native-ratings";
-import { FIRESTORE_DB } from "../../FirebaseConfig";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 
 const PlayerHome = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [approvedGigs, setApprovedGigs] = useState([]);
+  const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState();
   const [gigid, setGigId] = useState("");
@@ -62,7 +70,36 @@ const PlayerHome = () => {
       setLoading(false);
     }
   };
+  const auth = FIREBASE_AUTH;
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error("User not logged in.");
+        }
 
+        const userDoc = await getDoc(
+          doc(FIRESTORE_DB, "users", currentUser.uid)
+        );
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist.");
+        }
+
+        const userData = userDoc.data();
+
+        setImageUrl(userData.image || null);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Failed to fetch user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(FIRESTORE_DB, "gigs"),
@@ -121,7 +158,7 @@ const PlayerHome = () => {
             <Card
               key={gig.id}
               title={gig.title}
-              image={{ uri: gig.imageUrl }}
+              imagee={{ uri: gig.imageUrl }}
               rating={gig.rating || 0}
               location={gig.location}
               bankName={gig.bankName}
@@ -157,7 +194,7 @@ const PlayerHome = () => {
               <Card
                 key={gig.id}
                 title={gig.title}
-                image={{ uri: gig.imageUrl }}
+                imagee={{ uri: gig.imageUrl }}
                 rating={gig.rating || 0}
                 location={gig.location}
                 bankName={gig.bankName}
@@ -185,12 +222,14 @@ const PlayerHome = () => {
             <Image source={Images.menu} />
           </TouchableOpacity>
           <Image source={Images.logo} style={{ height: 60, width: 60 }} />
-          <Image source={Images.smalluser} style={styles.userIcon} />
+          <Image
+            source={imageUrl ? { uri: imageUrl } : Images.smalluser}
+            style={{ width: 40, height: 40, borderRadius: 20 }}
+          />
         </View>
 
-        <Text style={styles.sectionTitle}>All Games</Text>
-        <TouchableOpacity onPress={fetchAverageRating}>
-          <Text>test</Text>
+        <TouchableOpacity onPress={() => setSelectedGame(null)}>
+          <Text style={styles.sectionTitle}>All Games</Text>
         </TouchableOpacity>
         <View style={styles.sliderContainer}>
           <ScrollView
@@ -241,7 +280,7 @@ const PlayerHome = () => {
 
 const Card = ({
   title,
-  image,
+  imagee,
   rating,
   location,
   hourlyRate,
@@ -257,6 +296,7 @@ const Card = ({
       onPress={() =>
         navigation.navigate("Booking", {
           title,
+          imagee,
           location,
           rating,
           hourlyRate,
@@ -268,7 +308,7 @@ const Card = ({
       }
     >
       <View style={styles.card}>
-        <Image source={image} style={styles.cardImage} />
+        <Image source={imagee} style={styles.cardImage} />
         <Text style={styles.cardTitle}>{title}</Text>
         <Rating
           type="star"

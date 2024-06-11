@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  Alert,
 } from "react-native";
 import { Rating } from "react-native-ratings";
 import * as ImagePicker from "expo-image-picker";
@@ -17,6 +18,7 @@ import * as FileSystem from "expo-file-system";
 import { FIRESTORE_DB, firebase } from "../../FirebaseConfig";
 import Loader from "../Components/Loader";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Icon from "react-native-vector-icons/FontAwesome";
 import { FIREBASE_AUTH } from "../../FirebaseConfig";
 import {
   addDoc,
@@ -28,11 +30,13 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 
 const Booking = ({ route }) => {
   const {
     title,
+    imagee,
     location,
     rating,
     bankName,
@@ -46,6 +50,7 @@ const Booking = ({ route }) => {
   const [date, setDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
   const [emaill, setEmaill] = useState("");
   const [bookedHours, setBookedHours] = useState([]);
   const navigation = useNavigation();
@@ -57,6 +62,7 @@ const Booking = ({ route }) => {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
+        Alert.alert("Permission was not granted");
         throw new Error(
           "Permission to access the photo library was not granted."
         );
@@ -64,7 +70,6 @@ const Booking = ({ route }) => {
 
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-
         quality: 1,
       });
 
@@ -88,6 +93,7 @@ const Booking = ({ route }) => {
     return blob;
   };
   const auth = FIREBASE_AUTH;
+
   const handleBooking = async () => {
     const currentUser = auth.currentUser;
     try {
@@ -196,9 +202,67 @@ const Booking = ({ route }) => {
     setShowDatePicker(false);
     setDate(currentDate);
   };
+  const toggleWishlist = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    setLoading(true);
+    try {
+      const wishlistRef = doc(
+        FIRESTORE_DB,
+        "wishlists",
+        `${currentUser.uid}_${gigId}`
+      );
+      const wishlistDoc = await getDoc(wishlistRef);
 
+      if (wishlistDoc.exists()) {
+        await deleteDoc(wishlistRef);
+        setIsInWishlist(false);
+        alert("Removed from wishlist");
+      } else {
+        await setDoc(wishlistRef, {
+          userId: currentUser.uid,
+          gigId: gigId,
+          title: title,
+          imagee: imagee,
+          location: location,
+          rating: rating,
+          bankName: bankName,
+          hourlyRate: hourlyRate,
+          accountNumber: accountNumber,
+          email: email,
+        });
+        setIsInWishlist(true);
+        alert("Added to wishlist");
+      }
+    } catch (error) {
+      console.error("Error toggling wishlist:", error);
+      alert("Failed to update wishlist");
+    }
+    setLoading(false);
+  };
+
+  const checkWishlist = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const wishlistRef = doc(
+        FIRESTORE_DB,
+        "wishlists",
+        `${currentUser.uid}_${gigId}`
+      );
+      const wishlistDoc = await getDoc(wishlistRef);
+
+      if (wishlistDoc.exists()) {
+        setIsInWishlist(true);
+      }
+    } catch (error) {
+      console.error("Error checking wishlist:", error);
+    }
+  };
   useEffect(() => {
     fetchBookedHours();
+    checkWishlist();
   }, [date]);
 
   const fetchBookedHours = async () => {
@@ -243,6 +307,16 @@ const Booking = ({ route }) => {
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>Location: {location}</Text>
+      <TouchableOpacity onPress={toggleWishlist} style={styles.wishlistButton}>
+        <Icon
+          name={isInWishlist ? "heart" : "heart-o"}
+          size={24}
+          color={isInWishlist ? "red" : "#DDD"}
+        />
+        <Text style={styles.wishlistButtonText}>
+          {isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+        </Text>
+      </TouchableOpacity>
       <Text>Hourly Rate: {hourlyRate}</Text>
       <Text>Owner Email: {email}</Text>
       <Text>Your Email: {emaill}</Text>
@@ -310,6 +384,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: WHITE,
     padding: 20,
+  },
+  wishlistButton: {
+    flexDirection: "column",
+    alignItems: "center",
+    backgroundColor: WHITE,
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 20,
+  },
+  wishlistButtonText: {
+    color: GRADIENT_1,
+    fontSize: 10,
+    // marginLeft: 10,
+    fontFamily: "Montserrat 600",
   },
   title: {
     fontSize: 24,

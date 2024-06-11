@@ -11,16 +11,7 @@ import {
   TextInput,
 } from "react-native";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  QuerySnapshot,
-  addDoc,
-} from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { useNavigation } from "@react-navigation/native";
 import { GRADIENT_1 } from "../Constants/Colors";
 import { Rating } from "react-native-ratings";
@@ -107,7 +98,7 @@ const VerifyBooking = () => {
       <Text>Status: {item.Status}</Text>
       <Text>Owner: {item.owner}</Text>
       <Text>Hours: {item.selectedHours}</Text>
-      <Text>gigId: {item.gigId}</Text>
+      <Text>Gig Id: {item.gigId}</Text>
 
       {item.Status === "Approved" && (
         <>

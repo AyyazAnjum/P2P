@@ -58,10 +58,10 @@ const Welcome = ({ navigation }) => {
         return (
           <>
             <Image source={Images.wel3} style={styles.image} />
-            <Text style={styles.title}>Connect with Players</Text>
+            <Text style={styles.title}>Enjoy Playing Games</Text>
             <Text style={styles.description}>
-              Meet and play with fellow sports enthusiasts in your area. Build
-              your network and have fun!
+              Challenge yourself and enhance your skills while enjoying your
+              favorite games with Pay2Play.
             </Text>
           </>
         );

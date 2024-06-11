@@ -15,6 +15,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import * as mime from "mime";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
+import RNPickerSelect from "react-native-picker-select";
+
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Loader from "../Components/Loader";
@@ -183,7 +185,7 @@ const EditProfile = () => {
 
         setImage(imageUrl);
       }
-
+      Alert.alert("Profile updated successfully!");
       console.log("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -249,6 +251,7 @@ const EditProfile = () => {
           placeholder="xyz@gmail.com"
           value={email}
           onChangeText={setEmail}
+          editable={false}
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
       </View>
@@ -272,12 +275,20 @@ const EditProfile = () => {
       </View>
       <View>
         <Text style={styles.label}>Gender</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Male"
-          value={gender}
-          onChangeText={setGender}
-        />
+        <View style={styles.input}>
+          <RNPickerSelect
+            onValueChange={(value) => setGender(value)}
+            placeholder={{
+              label: "Select Gender",
+              value: null,
+              color: "#A8A8A9",
+            }}
+            items={[
+              { label: "Male", value: "Male" },
+              { label: "Female", value: "Female" },
+            ]}
+          />
+        </View>
         {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
       </View>
       <View>
@@ -368,6 +379,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: "Montserrat 500",
     fontSize: 16,
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginBottom: 10,
   },
 });
 

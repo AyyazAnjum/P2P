@@ -1,5 +1,6 @@
 import wel1 from "../Assests/wel1.png";
 import wel2 from "../Assests/wel2.png";
+import wel3 from "../Assests/wel3.png";
 import user from "../Assests/user.png";
 import pass from "../Assests/pass.png";
 import eye from "../Assests/eye.png";
@@ -31,6 +32,7 @@ import management from "../Assests/management.png";
 const Images = {
   wel1: wel1,
   wel2: wel2,
+  wel3: wel3,
   user: user,
   pass: pass,
   eye: eye,
