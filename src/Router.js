@@ -19,6 +19,7 @@ import AdminHome from "./Screens/AdminHome";
 import ProfileManagement from "./Screens/ProfileManagement";
 // import PlayerComlains from "./Screens/PlayerComplains";
 import VerifyBooking from "./Screens/VerifyBooking";
+import Complain from "./Screens/Complains";
 
 import {
   SafeAreaProvider,
@@ -90,6 +91,7 @@ const Router = () => {
           />
           {/* <Stack.Screen name="PlayerComlains" component={PlayerComlains} /> */}
           <Stack.Screen name="VerifyBooking" component={VerifyBooking} />
+          <Stack.Screen name="Complain" component={Complain} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

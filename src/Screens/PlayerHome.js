@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  BackHandler,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
@@ -40,6 +41,30 @@ const PlayerHome = () => {
     { name: "Snooker", image: Images.snooker },
     { name: "Basketball", image: Images.snooker },
   ];
+  const [backPressCount, setBackPressCount] = useState(0);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (backPressCount === 0) {
+        setBackPressCount(backPressCount + 1);
+
+        setTimeout(() => {
+          setBackPressCount(0);
+        }, 2000);
+        return true;
+      } else if (backPressCount === 1) {
+        BackHandler.exitApp();
+      }
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [backPressCount]);
 
   const fetchAverageRating = async () => {
     try {
@@ -166,6 +191,7 @@ const PlayerHome = () => {
               accountNumber={gig.accountNumber}
               email={gig.email}
               gigId={gig.gigId}
+              locationlink={gig.locationlink}
             />
           ))}
         </ScrollView>
@@ -202,6 +228,7 @@ const PlayerHome = () => {
                 accountNumber={gig.accountNumber}
                 email={gig.email}
                 gigId={gig.gigId}
+                locationlink={gig.locationlink}
               />
             ))}
           </ScrollView>
@@ -288,6 +315,7 @@ const Card = ({
   accountNumber,
   email,
   gigId,
+  locationlink,
 }) => {
   const navigation = useNavigation();
 
@@ -304,6 +332,7 @@ const Card = ({
           accountNumber,
           email,
           gigId,
+          locationlink,
         })
       }
     >

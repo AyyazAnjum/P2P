@@ -275,9 +275,10 @@ const EditProfile = () => {
       </View>
       <View>
         <Text style={styles.label}>Gender</Text>
-        <View style={styles.input}>
+        <View style={[styles.input, { paddingTop: 3 }]}>
           <RNPickerSelect
             onValueChange={(value) => setGender(value)}
+            value={gender}
             placeholder={{
               label: "Select Gender",
               value: null,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Button,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
@@ -16,7 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { Images } from "../Constants/Images";
 import { FIRESTORE_DB } from "../../FirebaseConfig";
-import { collection, addDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc, getDoc, updateDoc, doc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Loader from "../Components/Loader";
 // Import the hook to use Firebase Auth state
@@ -32,11 +33,31 @@ const NewGig = ({ route }) => {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [ownerName, setOwnerName] = useState("");
+  const [locationlink, setLocationlink] = useState("");
+  const [gigidd, setGigIdd] = useState("");
+  const [status, setStatus] = useState("");
 
   const navigation = useNavigation();
   const auth = FIREBASE_AUTH;
 
-  const { email } = route.params;
+  const { email, gig, isEdit } = route.params || {};
+
+  useEffect(() => {
+    if (isEdit && gig) {
+      setTitle(gig.title);
+      setGigIdd(gig.gigId);
+      setLocation(gig.location);
+      setLocationlink(gig.locationlink);
+      setStatus(gig.status);
+      setHourlyRate(gig.hourlyRate);
+      setBankName(gig.bankName);
+      setAccountNumber(gig.accountNumber);
+      setOwnerName(gig.ownerName);
+      setImage(gig.imageUrl);
+    }
+  }, [isEdit, gig]);
+
+  // const { email } = route.params;
   const handleImagePicker = async () => {
     try {
       const { status } =
@@ -69,7 +90,60 @@ const NewGig = ({ route }) => {
     }
   };
 
-  const handleSubmit = async () => {
+  // const handleSubmit = async () => {
+  //   if (
+  //     !title ||
+  //     !location ||
+  //     !category ||
+  //     !hourlyRate ||
+  //     !image ||
+  //     !bankName ||
+  //     !accountNumber ||
+  //     !ownerName ||
+  //     !locationlink
+  //   ) {
+  //     Alert.alert("Error", "Please fill all the fields and upload an image");
+  //     return;
+  //   }
+  //   setLoading(true);
+  //   try {
+  //     const response = await fetch(image);
+  //     const blob = await response.blob();
+
+  //     // Upload image to Firebase Storage
+  //     const storage = getStorage();
+  //     const imageRef = ref(storage, `gigImages/${Date.now()}`);
+  //     await uploadBytes(imageRef, blob);
+
+  //     // Get download URL of the uploaded image
+  //     const imageUrl = await getDownloadURL(imageRef);
+  //     const gigId = Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit random number
+
+  //     // Add gig data to Firestore with image URL
+  //     await addDoc(collection(FIRESTORE_DB, "gigs"), {
+  //       title,
+  //       location,
+  //       category,
+  //       hourlyRate: parseFloat(hourlyRate),
+  //       bankName, // Add bank name to Firestore
+  //       accountNumber, // Add account number to Firestore
+  //       imageUrl, // Add the image URL to Firestore
+  //       status: "Pending", // 'Status' changed to lowercase 'status'
+  //       email: email,
+  //       ownerName, // Add owner name to Firestore
+  //       gigId: gigId,
+  //       locationlink,
+  //     });
+  //     Alert.alert("Success", "Gig created successfully");
+  //     navigation.goBack();
+  //   } catch (error) {
+  //     console.error("Error creating gig:", error.message);
+  //     Alert.alert("Error", "Failed to create gig");
+  //   }
+  //   setLoading(false);
+  // };
+
+  const handleSaveGig = async () => {
     if (
       !title ||
       !location ||
@@ -78,46 +152,69 @@ const NewGig = ({ route }) => {
       !image ||
       !bankName ||
       !accountNumber ||
-      !ownerName
+      !ownerName ||
+      !locationlink
     ) {
       Alert.alert("Error", "Please fill all the fields and upload an image");
       return;
     }
-    setLoading(true);
     try {
-      const response = await fetch(image);
-      const blob = await response.blob();
+      setLoading(true);
 
-      // Upload image to Firebase Storage
-      const storage = getStorage();
-      const imageRef = ref(storage, `gigImages/${Date.now()}`);
-      await uploadBytes(imageRef, blob);
+      let imageUrl = image;
+      if (image && !image.startsWith("http")) {
+        const response = await fetch(image);
+        const blob = await response.blob();
 
-      // Get download URL of the uploaded image
-      const imageUrl = await getDownloadURL(imageRef);
-      const gigId = Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit random number
+        const storage = getStorage();
+        const storageRef = ref(storage, `gig_images/${Date.now()}`);
+        await uploadBytes(storageRef, blob);
 
-      // Add gig data to Firestore with image URL
-      await addDoc(collection(FIRESTORE_DB, "gigs"), {
-        title,
-        location,
-        category,
-        hourlyRate: parseFloat(hourlyRate),
-        bankName, // Add bank name to Firestore
-        accountNumber, // Add account number to Firestore
-        imageUrl, // Add the image URL to Firestore
-        status: "Pending", // 'Status' changed to lowercase 'status'
-        email: email,
-        ownerName, // Add owner name to Firestore
-        gigId: gigId,
-      });
-      Alert.alert("Success", "Gig created successfully");
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      if (isEdit && gig) {
+        await updateDoc(doc(FIRESTORE_DB, "gigs", gig.id), {
+          title,
+          location,
+          category,
+          hourlyRate: parseFloat(hourlyRate),
+          locationlink,
+          status: "Pending",
+          bankName,
+          accountNumber,
+          imageUrl,
+          email,
+          ownerName,
+          gigId: gigidd,
+        });
+        Alert.alert("Gig updated successfully");
+      } else {
+        const gigId = Math.floor(100000 + Math.random() * 900000);
+        await addDoc(collection(FIRESTORE_DB, "gigs"), {
+          title,
+          location,
+          category,
+          hourlyRate: parseFloat(hourlyRate),
+          bankName, // Add bank name to Firestore
+          accountNumber, // Add account number to Firestore
+          imageUrl, // Add the image URL to Firestore
+          status: "Pending", // 'Status' changed to lowercase 'status'
+          email: email,
+          ownerName, // Add owner name to Firestore
+          gigId: gigId,
+          locationlink,
+        });
+        Alert.alert("Gig created successfully");
+      }
+
       navigation.goBack();
     } catch (error) {
-      console.error("Error creating gig:", error.message);
-      Alert.alert("Error", "Failed to create gig");
+      console.error("Error saving gig:", error);
+      Alert.alert("Error", "Failed to save gig.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -126,7 +223,10 @@ const NewGig = ({ route }) => {
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Image source={Images.back} />
       </TouchableOpacity>
-      <Text style={styles.header}>Create New Gig</Text>
+      {/* <Text style={styles.header}>Create New Gig</Text> */}
+      <Text style={styles.header}>
+        {isEdit ? "Edit Your Gig" : "Create New Gig"}
+      </Text>
 
       {/* <Text style={styles.header}>{email}</Text> */}
       <ScrollView>
@@ -150,9 +250,15 @@ const NewGig = ({ route }) => {
 
         <TextInput
           style={styles.input}
-          placeholder="Location"
+          placeholder="Location Name"
           value={location}
           onChangeText={setLocation}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Location Link"
+          value={locationlink}
+          onChangeText={setLocationlink}
         />
 
         <View style={styles.pickerContainer}>
@@ -198,8 +304,21 @@ const NewGig = ({ route }) => {
           onChangeText={setAccountNumber}
         />
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+        {/* <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>Create Gig</Text>
+        </TouchableOpacity> */}
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleSaveGig}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {isEdit ? "Update Gig" : "Create Gig"}
+            </Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>

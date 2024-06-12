@@ -10,10 +10,11 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { GRADIENT_1, WHITE } from "../Constants/Colors";
+import { BLACK, GRADIENT_1, WHITE } from "../Constants/Colors";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import Loader from "../Components/Loader";
+import { Images } from "../Constants/Images";
 
 const PlayerWish = () => {
   const [wishlist, setWishlist] = useState([]);
@@ -55,67 +56,70 @@ const PlayerWish = () => {
   return (
     <View style={styles.container}>
       <Loader loading={loading} />
-
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 45,
+          marginBottom: 25,
+        }}
+      >
+        <Image source={Images.back} />
+        <Text style={styles.heading}>Your Wishlist</Text>
+      </TouchableOpacity>
       {wishlist.length === 0 && !loading ? (
         <View
-          style={{
-            fontSize: 18,
-            fontWeight: "bold",
-            color: GRADIENT_1,
-            padding: 10,
-            alignSelf: "center",
-          }}
+          style={{ alignItems: "center", justifyContent: "center", flex: 1 }}
         >
-          <Text>No gigs favorited yet</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              fontFamily: "Montserrat 700",
+              color: GRADIENT_1,
+              paddingTop: 50,
+              // alignSelf: "center",
+            }}
+          >
+            No gigs favorited yet
+          </Text>
         </View>
       ) : (
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "bold",
-            color: GRADIENT_1,
-            padding: 10,
-            alignSelf: "center",
-          }}
-        >
-          Your Wishlist
-        </Text>
+        <></>
       )}
       <>
         <ScrollView>
           {!loading
             ? wishlist.map((gig) => (
-                <>
-                  <TouchableOpacity
-                    key={gig.id}
-                    onPress={() => {
-                      navigation.navigate("Booking", {
-                        title: gig.title,
-                        imagee: gig.imagee.uri,
-                        location: gig.location,
-                        rating: gig.rating,
-                        hourlyRate: gig.hourlyRate,
-                        bankName: gig.bankName,
-                        accountNumber: gig.accountNumber,
-                        email: gig.email,
-                        gigId: gig.gigId,
-                      });
-                    }}
-                    style={styles.card}
-                  >
-                    <Image
-                      source={{ uri: gig.imagee.uri }}
-                      style={styles.cardImage}
-                    />
-                    <Text style={styles.cardTitle}>{gig.title}</Text>
-                    <Text style={styles.cardSubtitle}>
-                      Location: {gig.location}
-                    </Text>
-                    <Text style={styles.cardSubtitle}>
-                      Hourly Rate: {gig.hourlyRate}
-                    </Text>
-                  </TouchableOpacity>
-                </>
+                <TouchableOpacity
+                  key={gig.gigId}
+                  onPress={() => {
+                    navigation.navigate("Booking", {
+                      title: gig.title,
+                      imagee: gig.imagee.uri,
+                      location: gig.location,
+                      rating: gig.rating,
+                      hourlyRate: gig.hourlyRate,
+                      bankName: gig.bankName,
+                      accountNumber: gig.accountNumber,
+                      email: gig.email,
+                      gigId: gig.gigId,
+                    });
+                  }}
+                  style={styles.card}
+                >
+                  <Image
+                    source={{ uri: gig.imagee.uri }}
+                    style={styles.cardImage}
+                  />
+                  <Text style={styles.cardTitle}>{gig.title}</Text>
+                  <Text style={styles.cardSubtitle}>
+                    Location: {gig.location}
+                  </Text>
+                  <Text style={styles.cardSubtitle}>
+                    Hourly Rate: {gig.hourlyRate}
+                  </Text>
+                </TouchableOpacity>
               ))
             : null}
         </ScrollView>
@@ -130,7 +134,13 @@ const styles = StyleSheet.create({
     backgroundColor: WHITE,
     flex: 1,
   },
+  heading: {
+    fontSize: 24,
+    fontFamily: "Montserrat 600",
+    color: BLACK,
 
+    textAlign: "center",
+  },
   noGigsContainer: {
     flex: 1,
     justifyContent: "center",

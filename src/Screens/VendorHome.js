@@ -9,6 +9,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Linking,
+  BackHandler,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
@@ -31,6 +33,60 @@ const VendorHome = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [backPressCount, setBackPressCount] = useState(0);
+  const [imageUrl, setImageUrl] = useState(null);
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error("User not logged in.");
+        }
+
+        const userDoc = await getDoc(
+          doc(FIRESTORE_DB, "users", currentUser.uid)
+        );
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist.");
+        }
+
+        const userData = userDoc.data();
+
+        setImageUrl(userData.image || null);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Failed to fetch user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (backPressCount === 0) {
+        setBackPressCount(backPressCount + 1);
+
+        setTimeout(() => {
+          setBackPressCount(0);
+        }, 2000);
+        return true;
+      } else if (backPressCount === 1) {
+        BackHandler.exitApp();
+      }
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [backPressCount]);
 
   const navigation = useNavigation();
   const auth = FIREBASE_AUTH;
@@ -64,6 +120,9 @@ const VendorHome = () => {
 
   const handleCreateGigPress = async () => {
     navigation.navigate("NewGig", { email });
+  };
+  const handleEditGigPress = async (gig) => {
+    navigation.navigate("NewGig", { email, gig, isEdit: true });
   };
 
   const handleSave = async () => {
@@ -104,6 +163,7 @@ const VendorHome = () => {
 
       // Update state to remove the deleted gig
       setGigs(gigs.filter((gig) => gig.id !== id));
+      Alert.alert("Gig deleted successfully");
     } catch (error) {
       console.error("Error deleting gig:", error);
     } finally {
@@ -120,21 +180,56 @@ const VendorHome = () => {
           Rating: {gig.rating || "No Ratings Yet"}
         </Text>
         <Text style={styles.location}>Location: {gig.location}</Text>
+        <View style={{ flexDirection: "row", gap: 20, alignItems: "center" }}>
+          <Text style={styles.location}>Check Location: </Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(gig.locationlink)}
+            style={{
+              height: 30,
+              width: 50,
+              backgroundColor: "#2FCD74",
+              // marginTop: 30,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              borderRadius: 8,
+              gap: 6,
+            }}
+          >
+            <Text style={{ fontFamily: "Montserrat 600", color: WHITE }}>
+              Go
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.location}>Status: {gig.status}</Text>
         <Text style={styles.location}>Hourly Rate: {gig.hourlyRate}</Text>
         <Text style={styles.location}>Bank Name: {gig.bankName}</Text>
         <Text style={styles.location}>Account Number: {gig.accountNumber}</Text>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteGig(gig.id, gig.imageUrl)} // Pass image URL here
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={WHITE} />
-          ) : (
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          )}
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 3, alignItems: "center" }}>
+          <TouchableOpacity
+            style={[styles.deleteButton, { backgroundColor: "#E4D00A" }]}
+            onPress={() => handleEditGigPress(gig)} // Edit button functionality
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={WHITE} />
+            ) : (
+              <Text style={styles.deleteButtonText}>Edit</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteGig(gig.id, gig.imageUrl)} // Pass image URL here
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={WHITE} />
+            ) : (
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     ));
 
@@ -156,7 +251,10 @@ const VendorHome = () => {
             <Image source={Images.menu} />
           </TouchableOpacity>
           <Image source={Images.logo} style={{ height: 60, width: 60 }} />
-          <Image source={Images.smalluser} style={styles.userIcon} />
+          <Image
+            source={imageUrl ? { uri: imageUrl } : Images.smalluser}
+            style={{ width: 40, height: 40, borderRadius: 20 }}
+          />
         </View>
 
         <Text style={styles.sectionTitle}>My Gigs</Text>

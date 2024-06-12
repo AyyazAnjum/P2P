@@ -9,12 +9,13 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  BackHandler,
 } from "react-native";
 import { GRADIENT_1, WHITE } from "../Constants/Colors";
 import { Images } from "../Constants/Images";
 import Sidebar from "../Components/Sidebar";
-import { FIRESTORE_DB } from "../../FirebaseConfig";
-import { collection, onSnapshot } from "firebase/firestore";
+import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
+import { collection, getDoc, onSnapshot } from "firebase/firestore";
 import { updateDoc, doc } from "firebase/firestore";
 
 const AdminHome = () => {
@@ -22,7 +23,34 @@ const AdminHome = () => {
   const [approvedGigs, setApprovedGigs] = useState([]);
   const [pendingGigs, setPendingGigs] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true); // Loading state
+  const auth = FIREBASE_AUTH;
+
+  const [backPressCount, setBackPressCount] = useState(0);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (backPressCount === 0) {
+        setBackPressCount(backPressCount + 1);
+
+        setTimeout(() => {
+          setBackPressCount(0);
+        }, 2000);
+        return true;
+      } else if (backPressCount === 1) {
+        BackHandler.exitApp();
+      }
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [backPressCount]);
 
   const fetchData = () => {
     setLoading(true);
@@ -108,6 +136,35 @@ const AdminHome = () => {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error("User not logged in.");
+        }
+
+        const userDoc = await getDoc(
+          doc(FIRESTORE_DB, "users", currentUser.uid)
+        );
+        if (!userDoc.exists()) {
+          throw new Error("User document does not exist.");
+        }
+
+        const userData = userDoc.data();
+
+        setImageUrl(userData.image || null);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Failed to fetch user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const renderPendingGigs = () => {
     if (loading) {
@@ -208,7 +265,10 @@ const AdminHome = () => {
             <Image source={Images.menu} />
           </TouchableOpacity>
           <Image source={Images.logo} style={{ height: 60, width: 60 }} />
-          <Image source={Images.smalluser} style={styles.userIcon} />
+          <Image
+            source={imageUrl ? { uri: imageUrl } : Images.smalluser}
+            style={{ width: 40, height: 40, borderRadius: 20 }}
+          />
         </View>
 
         <Text style={styles.sectionTitle}>Pending Gigs :-</Text>

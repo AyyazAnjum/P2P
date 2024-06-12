@@ -420,7 +420,7 @@ const SidebarContent = ({ show, close, staff, admin }) => {
                   gap: 12,
                 }}
                 onPress={() => {
-                  navigation.navigate("PlayerComplains");
+                  navigation.navigate("Complain");
                 }}
               >
                 <Image

@@ -7,6 +7,9 @@ import {
   Image,
   ScrollView,
   Alert,
+  Linking,
+  Modal,
+  TextInput,
 } from "react-native";
 import { Rating } from "react-native-ratings";
 import * as ImagePicker from "expo-image-picker";
@@ -44,6 +47,7 @@ const Booking = ({ route }) => {
     accountNumber,
     email,
     gigId,
+    locationlink,
   } = route.params;
   const [selectedHours, setSelectedHours] = useState([]);
   const [image, setImage] = useState(null);
@@ -53,9 +57,43 @@ const Booking = ({ route }) => {
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [emaill, setEmaill] = useState("");
   const [bookedHours, setBookedHours] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false); // State for modal visibility
+  const [reportReason, setReportReason] = useState("");
   const navigation = useNavigation();
 
   const totalCost = selectedHours.length * hourlyRate;
+  const handleSubmitReport = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      alert("You need to be logged in to report a gig.");
+      return;
+    }
+
+    if (!reportReason.trim()) {
+      alert("Please provide a reason for reporting.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await addDoc(collection(FIRESTORE_DB, "reports"), {
+        gigId: gigId,
+        userId: currentUser.uid,
+        reason: reportReason,
+        email: emaill,
+        timestamp: new Date().toISOString(),
+      });
+
+      alert("Report submitted successfully.");
+      setModalVisible(false);
+      setReportReason("");
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      alert("Failed to submit report. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const pickImage = async () => {
     try {
@@ -307,16 +345,107 @@ const Booking = ({ route }) => {
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>Location: {location}</Text>
-      <TouchableOpacity onPress={toggleWishlist} style={styles.wishlistButton}>
-        <Icon
-          name={isInWishlist ? "heart" : "heart-o"}
-          size={24}
-          color={isInWishlist ? "red" : "#DDD"}
-        />
-        <Text style={styles.wishlistButtonText}>
-          {isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
-        </Text>
+      <TouchableOpacity
+        onPress={() => setModalVisible(true)}
+        style={styles.reportButton}
+      >
+        <Text style={styles.reportButtonText}>Report</Text>
       </TouchableOpacity>
+      <Text style={styles.subtitle} selectable={true}>
+        Location Link: {locationlink}
+      </Text>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(!modalVisible)}
+      >
+        <View
+          style={{
+            flex: 1,
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            // alignItems: "center",
+          }}
+        >
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Report Gig</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter reason for reporting"
+              value={reportReason}
+              onChangeText={setReportReason}
+            />
+            <TouchableOpacity
+              onPress={handleSubmitReport}
+              style={styles.submitButton}
+            >
+              <Text style={styles.submitButtonText}>Submit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <View style={{ flexDirection: "row", justifyContent: "center", gap: 20 }}>
+        <View
+          style={{
+            flexDirection: "column",
+            alignItems: "center",
+            backgroundColor: WHITE,
+            paddingVertical: 10,
+            paddingHorizontal: 22,
+            borderRadius: 5,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: GRADIENT_1,
+            gap: 5,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => Linking.openURL(locationlink)}
+            style={{
+              height: 30,
+              width: 50,
+              backgroundColor: "#2FCD74",
+              // marginTop: 30,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              borderRadius: 8,
+              gap: 6,
+            }}
+          >
+            <Text style={{ fontFamily: "Montserrat 600", color: WHITE }}>
+              Go
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.wishlistButtonText}>Location </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={toggleWishlist}
+          style={[
+            styles.wishlistButton,
+            { borderWidth: 1, borderColor: GRADIENT_1, paddingTop: 12 },
+          ]}
+        >
+          <Icon
+            name={isInWishlist ? "heart" : "heart-o"}
+            size={24}
+            color={isInWishlist ? "red" : "#DDD"}
+          />
+          <Text style={[styles.wishlistButtonText, { marginTop: 8 }]}>
+            {isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+          </Text>
+        </TouchableOpacity>
+      </View>
       <Text>Hourly Rate: {hourlyRate}</Text>
       <Text>Owner Email: {email}</Text>
       <Text>Your Email: {emaill}</Text>
@@ -495,6 +624,73 @@ const styles = StyleSheet.create({
   bookButtonText: {
     color: WHITE,
     fontSize: 18,
+    fontWeight: "bold",
+  },
+  reportButton: {
+    backgroundColor: "red",
+    padding: 8,
+    borderRadius: 5,
+    alignItems: "center",
+    width: "30%",
+    alignSelf: "flex-end",
+  },
+  reportButtonText: {
+    color: WHITE,
+    fontSize: 14,
+    fontFamily: "Montserrat 600",
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    padding: 35,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: GRADIENT_1,
+  },
+  textInput: {
+    width: "100%",
+    padding: 10,
+    borderWidth: 1,
+    borderColor: GRADIENT_1,
+    borderRadius: 5,
+    marginBottom: 20,
+  },
+  submitButton: {
+    backgroundColor: GRADIENT_1,
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginBottom: 10,
+    width: "100%",
+  },
+  submitButtonText: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    backgroundColor: "#ccc",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    width: "100%",
+  },
+  closeButtonText: {
+    color: "#000",
+    fontSize: 16,
     fontWeight: "bold",
   },
 });
